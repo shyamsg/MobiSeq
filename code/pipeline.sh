@@ -420,6 +420,33 @@ if [ ! -e .nodupsec.done ]; then
   touch .nodupsec.done
 fi
 
+## make the indexes
+cd $LINEBAM
+if [ ! -e .bai.done ]; then
+  for bam in *bam; do
+      echo "samtools index $i"
+  done | xsbatch -c 1 --mem-per-cpu=2G -R --
+fi
+cd $SINEBAM
+if [ ! -e .bai.done ]; then
+  for bam in *bam; do
+      echo "samtools index $i"
+  done | xsbatch -c 1 --mem-per-cpu=2G -R --
+fi
+cd $DEERBAM
+if [ ! -e .bai.done ]; then
+  for bam in *bam; do
+      echo "samtools index $i"
+  done | xsbatch -c 1 --mem-per-cpu=2G -R --
+fi
+cd $RATBAM
+if [ ! -e .bai.done ]; then
+  for bam in Rat*bam; do
+      echo "samtools index $i"
+  done | xsbatch -c 1 --mem-per-cpu=2G -R --
+fi
+
+
 ### Aggregate plot time
 AGGDIR=$PROJECT/aggPlot
 mkdir -p $AGGDIR
