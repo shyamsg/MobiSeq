@@ -424,32 +424,33 @@ fi
 cd $LINEBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $bam $(basename $bam .bam).bai"
+      echo "samtools index $bam"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
   touch .bai.done
 fi
 cd $SINEBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $bam $(basename $bam .bam).bai"
+      echo "samtools index $bam"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
   touch .bai.done
 fi
 cd $DEERBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $bam $(basename $bam .bam).bai"
+      echo "samtools index $bam"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
   touch .bai.done
 fi
 cd $RATBAM
 if [ ! -e .bai.done ]; then
   for bam in Rat*bam; do
-      echo "samtools index $bam $(basename $bam .bam).bai"
+      echo "samtools index $bam"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
   touch .bai.done
 fi
-
+echo "Generated indices for bams. Press any key to continue, and Ctrl+C to quit."
+read dummy
 
 ### Aggregate plot time
 AGGDIR=$PROJECT/aggPlot
@@ -498,18 +499,22 @@ cd $STATS
 if [ ! -e .line.done ]; then
   echo "bedtools multicov -bams $(ls $LINEBAM/*markdup.bam | tr -s "\n" " ") -bed $LINEMATCH/LINE.allSamples.bed > LINE.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=4G --
   echo "bedtools multicov -bams $(ls $LINEBAM/*nodupsec.bam | tr -s "\n" " ") -bed $LINEMATCH/LINE.allSamples.90pct.bed > LINE.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=4G --
+  touch .line.done
 fi
 if [ ! -e .sine.done ]; then
   echo "bedtools multicov -bams $(ls $SINEBAM/*markdup.bam | tr -s "\n" " ") -bed $SINEMATCH/SINE.allSamples.bed > SINE.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=4G --
   echo "bedtools multicov -bams $(ls $SINEBAM/*nodupsec.bam | tr -s "\n" " ") -bed $SINEMATCH/SINE.allSamples.90pct.bed > SINE.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=4G --
+  touch .sine.done
 fi
 if [ ! -e .bov2a.done ]; then
-  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.allSamples.bed > BOV2A.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
-  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | grep -v DD | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.onlyCE.bed > BOV2A.onlyCE.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
-  echo "bedtools multicov -bams $(ls $DEERBAM/*allSamples.90pct.nodupsec.bam | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.allSamples.90pct.bed > BOV2A.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
-  echo "bedtools multicov -bams $(ls $DEERBAM/*onlyCE.90pct.nodupsec.bam | grep -v DD | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.onlyCE.90pct.bed > BOV2A.onlyCE.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
+  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.allSamples.bed > BOV2A.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | grep -v DD | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.onlyCE.bed > BOV2A.onlyCE.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  echo "bedtools multicov -bams $(ls $DEERBAM/*allSamples.90pct.nodupsec.bam | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.allSamples.90pct.bed > BOV2A.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  echo "bedtools multicov -bams $(ls $DEERBAM/*onlyCE.90pct.nodupsec.bam | grep -v DD | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.onlyCE.90pct.bed > BOV2A.onlyCE.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  touch .bov2a.done
 fi
 if [ ! -e .l1.done ]; then
-  echo "bedtools multicov -bams $(ls $RATBAM/Rat*markdup.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.bed > L1.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
-  echo "bedtools multicov -bams $(ls $RATBAM/Rat*nodupsec.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.90pct.bed > L1.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G
+  echo "bedtools multicov -bams $(ls $RATBAM/Rat*markdup.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.bed > L1.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  echo "bedtools multicov -bams $(ls $RATBAM/Rat*nodupsec.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.90pct.bed > L1.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
+  touch .l1.done
 fi
