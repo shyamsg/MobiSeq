@@ -7,6 +7,7 @@ MAP=$PROJECT/mapping
 ADAPTER=$PROJECT/adapRem
 MATCH=$PROJECT/matches
 GENOME=$PROJECT/genomes
+ANGSD=$PROJECT/angsd
 WOLFGENOME=$PROJECT/genomes/L.Dalen_14_wolf.scf.noHets.fasta
 DEERGENOME=$PROJECT/genomes/Cervus_elaphus.platanus.fasta
 RATGENOME=$PROJECT/genomes/rn6.fasta
@@ -517,4 +518,39 @@ if [ ! -e .l1.done ]; then
   echo "bedtools multicov -bams $(ls $RATBAM/Rat*markdup.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.bed > L1.allSamples.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
   echo "bedtools multicov -bams $(ls $RATBAM/Rat*nodupsec.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.90pct.bed > L1.allSamples.90pct.bedcov" | xsbatch -c 1 --mem-per-cpu=10G --
   touch .l1.done
+fi
+
+## Variant calling
+mkdir -p $ANGSD
+cd $ANGSD
+LINEVAR=$ANGSD/LINE
+mkdir -p $LINEVAR
+SINEVAR=$ANGSD/SINE
+mkdir -p $SINEVAR
+DEERVAR=$ANGSD/deer
+mkdir -p $DEERVAR
+RATVAR=$ANGSD/rats
+mkdir -p $RATVAR
+
+cd $LINEVAR
+if [ ! -e .angsd.done ]; then
+  ls $LINEBAM/*nodupsec.bam > LINE.bamlist
+  echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3-out LINE.allSamples.90pct"
+fi
+cd $SINEVAR
+if [ ! -e .angsd.done ]; then
+  ls $SINEBAM/*nodupsec.bam > SINE.bamlist
+  echo "angsd -bam SINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3 -out SINE.allSamples.90pct"
+fi
+cd $DEERVAR
+if [ ! -e .angsd.done ]; then
+  ls $DEERBAM/*allSamples.90pct.nodupsec.bam > BOV2A.allSamples.bamlist
+  echo "angsd -bam BOV2A.allSamples.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 14 -minIndDpeth 3 -out BOV2A.allSamples.90pct"
+  ls $DEERBAM/*onlyCE.90pct.nodupsec.bam | grep -v DD > BOV2A.onlyCE.bamlist
+  echo "angsd -bam BOV2A.onlyCE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 13 -minIndDepth 3 -out BOV2A.onlyCE.90pct"
+fi
+cd $RATVAR
+if [ ! -e .angsd.done ]; then
+  ls $RATBAM/Rat*nodupsec.bam > L1.bamlist
+  echo "angsd -bam L1.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 2 -minIndDepth 3 -out LINE.allSamples.90pct"
 fi
