@@ -424,26 +424,30 @@ fi
 cd $LINEBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $i"
+      echo "samtools index $bam $(basename $bam .bam).bai"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
+  touch .bai.done
 fi
 cd $SINEBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $i"
+      echo "samtools index $bam $(basename $bam .bam).bai"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
+  touch .bai.done
 fi
 cd $DEERBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
-      echo "samtools index $i"
+      echo "samtools index $bam $(basename $bam .bam).bai"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
+  touch .bai.done
 fi
 cd $RATBAM
 if [ ! -e .bai.done ]; then
   for bam in Rat*bam; do
-      echo "samtools index $i"
+      echo "samtools index $bam $(basename $bam .bam).bai"
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
+  touch .bai.done
 fi
 
 
