@@ -27,6 +27,7 @@ module load kentTools/v22032018
 module load picard/v2.13.2
 module load agplus/v1.0
 module load cutadapt/v1.11
+module load angsd/v0.921
 
 ## For each genome and primer combo, get the appropriate bed and txt files.
 echo "Generating matches."
@@ -535,22 +536,26 @@ mkdir -p $RATVAR
 cd $LINEVAR
 if [ ! -e .angsd.done ]; then
   ls $LINEBAM/*nodupsec.bam > LINE.bamlist
-  echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3-out LINE.allSamples.90pct"
+  echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3-out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=5G --
+  touch .angsd.done
 fi
 cd $SINEVAR
 if [ ! -e .angsd.done ]; then
   ls $SINEBAM/*nodupsec.bam > SINE.bamlist
-  echo "angsd -bam SINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3 -out SINE.allSamples.90pct"
+  echo "angsd -bam SINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3 -out SINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=5G --
+  touch .angsd.done
 fi
 cd $DEERVAR
 if [ ! -e .angsd.done ]; then
   ls $DEERBAM/*allSamples.90pct.nodupsec.bam > BOV2A.allSamples.bamlist
-  echo "angsd -bam BOV2A.allSamples.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 14 -minIndDpeth 3 -out BOV2A.allSamples.90pct"
+  echo "angsd -bam BOV2A.allSamples.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 14 -minIndDpeth 3 -out BOV2A.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=20G --
   ls $DEERBAM/*onlyCE.90pct.nodupsec.bam | grep -v DD > BOV2A.onlyCE.bamlist
-  echo "angsd -bam BOV2A.onlyCE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 13 -minIndDepth 3 -out BOV2A.onlyCE.90pct"
+  echo "angsd -bam BOV2A.onlyCE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 13 -minIndDepth 3 -out BOV2A.onlyCE.90pct" | xsbatch -c 1 --mem-per-cpu=20G --
+  touch .angsd.done
 fi
 cd $RATVAR
 if [ ! -e .angsd.done ]; then
   ls $RATBAM/Rat*nodupsec.bam > L1.bamlist
-  echo "angsd -bam L1.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 2 -minIndDepth 3 -out LINE.allSamples.90pct"
+  echo "angsd -bam L1.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 2 -minIndDepth 3 -out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=3G --
+  touch .angsd.done
 fi
