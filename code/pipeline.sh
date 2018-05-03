@@ -461,18 +461,19 @@ if [ ! -e .agplus.done ]; then
 fi
 
 ## Stats computation, like coverage for the different bed intervals.
+mkdir -p $STATS
 cd $STATS
-## Compute the coverage for the full sets and the minimum sets
+## Compute the coverage for the full sets
 if [ ! -e .line.done ]; then
-  echo "bedtools multicov -bams $(ls $LINEBAM/*nodupsec.bam) -bed $LINEMATCH/LINE.allSamples.bed"
+  echo "bedtools multicov -bams $(ls $LINEBAM/*markdup.bam | tr -s "\n" " ") -bed $LINEMATCH/LINE.allSamples.bed"
 fi
 if [ ! -e .sine.done ]; then
-  echo "bedtools multicov -bams $(ls $SINEBAM/*nodupsec.bam) -bed $SINEMATCH/SINE.allSamples.bed"
+  echo "bedtools multicov -bams $(ls $SINEBAM/*markdup.bam | tr -s "\n" " ") -bed $SINEMATCH/SINE.allSamples.bed"
 fi
 if [ ! -e .bov2a.done ]; then
-  echo "bedtools multicov -bams $(ls $DEERBAM/*nodupsec.bam) -bed $DEERMATCH/BOV2A.allSamples.bed"
-  echo "bedtools multicov -bams $(ls $DEERBAM/*nodupsec.bam | grep -v DD) -bed $DEERMATCH/BOV2A.onlyCE.bed"
+  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.allSamples.bed"
+  echo "bedtools multicov -bams $(ls $DEERBAM/*markdup.bam | grep -v DD | tr -s "\n" " ") -bed $DEERMATCH/BOV2A.onlyCE.bed"
 fi
 if [ ! -e .l1.done ]; then
-  echo "bedtools multicov -bams $(ls $RATBAM/*nodupsec.bam) -bed $RATMATCH/L1.allSamples.bed"
+  echo "bedtools multicov -bams $(ls $RATBAM/*markdup.bam | tr -s "\n" " ") -bed $RATMATCH/L1.allSamples.bed"
 fi
