@@ -276,7 +276,7 @@ cd $LINEMATCH
 if [ ! -e .tree.done ]; then
   cut -f4 LINE.allSamples.bed > LINE.allSamples.presence.txt
   cut -f4 LINE.allSamples.90pct.bed > LINE.allSamples.presence.90pct.txt
-  for bed in *.Wolf_noHets.bed; do 
+  for bed in *.Wolf_noHets.bed; do
     bedtools intersect -a LINE.allSamples.bed -b $bed -wa -c -s | cut -f7 > temp
     paste LINE.allSamples.presence.txt temp > temp2
     mv temp2 LINE.allSamples.presence.txt
@@ -292,7 +292,7 @@ cd $SINEMATCH
 if [ ! -e .tree.done ]; then
   cut -f4 SINE.allSamples.bed > SINE.allSamples.presence.txt
   cut -f4 SINE.allSamples.90pct.bed > SINE.allSamples.presence.90pct.txt
-  for bed in *.Wolf_noHets.bed; do 
+  for bed in *.Wolf_noHets.bed; do
     bedtools intersect -a SINE.allSamples.bed -b $bed -wa -c -s | cut -f7 > temp
     paste SINE.allSamples.presence.txt temp > temp2
     mv temp2 SINE.allSamples.presence.txt
@@ -308,7 +308,7 @@ cd $DEERMATCH
 if [ ! -e .tree.done ]; then
   cut -f4 BOV2A.allSamples.bed > BOV2A.allSamples.presence.txt
   cut -f4 BOV2A.allSamples.90pct.bed > BOV2A.allSamples.presence.90pct.txt
-  for bed in *.CervusElaphus.bed; do 
+  for bed in *.CervusElaphus.bed; do
     bedtools intersect -a BOV2A.allSamples.bed -b $bed -wa -c -s | cut -f7 > temp
     paste BOV2A.allSamples.presence.txt temp > temp2
     mv temp2 BOV2A.allSamples.presence.txt
@@ -319,7 +319,7 @@ if [ ! -e .tree.done ]; then
   done
   cut -f4 BOV2A.onlyCE.bed > BOV2A.onlyCE.presence.txt
   cut -f4 BOV2A.onlyCE.90pct.bed > BOV2A.onlyCE.presence.90pct.txt
-  for bed in $(ls *.CervusElaphus.bed | grep -v DD); do 
+  for bed in $(ls *.CervusElaphus.bed | grep -v DD); do
     bedtools intersect -a BOV2A.onlyCE.bed -b $bed -wa -c -s | cut -f7 > temp
     paste BOV2A.onlyCE.presence.txt temp > temp2
     mv temp2 BOV2A.onlyCE.presence.txt
@@ -335,7 +335,7 @@ cd $RATMATCH
 if [ ! -e .tree.done ]; then
   cut -f4 L1.allSamples.bed > L1.allSamples.presence.txt
   cut -f4 L1.allSamples.90pct.bed > L1.allSamples.presence.90pct.txt
-  for bed in *.rn6.bed; do 
+  for bed in *.rn6.bed; do
     bedtools intersect -a L1.allSamples.bed -b $bed -wa -c -s | cut -f7 > temp
     paste L1.allSamples.presence.txt temp > temp2
     mv temp2 L1.allSamples.presence.txt
@@ -387,38 +387,38 @@ fi
 ## Make the bams
 cd $LINEBAM
 if [ ! -e .nodupsec.done ]; then
-  for bam in *markdup.bam; do 
+  for bam in *markdup.bam; do
     echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $LINEMATCH/LINE.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
   done | xsbatch -R -c 1 --mem-per-cpu=6g --
   touch .nodupsec.done
-fi 
+fi
 
 cd $SINEBAM
 if [ ! -e .nodupsec.done ]; then
-  for bam in *markdup.bam; do 
+  for bam in *markdup.bam; do
     echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $SINEMATCH/SINE.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
   done | xsbatch -R -c 1 --mem-per-cpu=6g --
   touch .nodupsec.done
-fi 
+fi
 
 cd $DEERBAM
 if [ ! -e .nodupsec.done ]; then
-  for bam in *markdup.bam; do 
+  for bam in *markdup.bam; do
     echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $DEERMATCH/BOV2A.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/allSamples.90pct.nodupsec.bam} -"
   done | xsbatch -R -c 1 --mem-per-cpu=10g --max-array-jobs 12 --
-  for bam in *markdup.bam; do 
+  for bam in *markdup.bam; do
     echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $DEERMATCH/BOV2A.onlyCE.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/onlyCE.90pct.nodupsec.bam} -"
   done | xsbatch -R -c 1 --mem-per-cpu=10g --max-array-jobs 12 --
   touch .nodupsec.done
-fi 
+fi
 
 cd $RATBAM
 if [ ! -e .nodupsec.done ]; then
-  for bam in Rat*markdup.bam; do 
+  for bam in Rat*markdup.bam; do
     echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $RATMATCH/L1.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
   done | xsbatch -R -c 1 --mem-per-cpu=6g --
   touch .nodupsec.done
-fi 
+fi
 
 ### Aggregate plot time
 AGGDIR=$PROJECT/aggPlot
@@ -459,36 +459,20 @@ if [ ! -e .agplus.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
   touch .agplus.done
 fi
-exit
-### Use bedtools to compute coverage at each base in a 1 kb interval around the window
-if [ ! -e .bedcov.done ]; then
-  for bam in $LINEBAM/*.allReads.NoDupNoSec.bam; do
-    bn=$(basename $bam .bam)
-    if [ ! -e $bn.depth ]; then
-      echo "bedtools coverage -a $MATCH/wolf_LINE_1k.bed -b $bam -d -nobuf | cut -f7,8 | awk 'BEGIN{ for(x=1; x<=2020; x++){cov[x]=0; tot[x]=0;}} {cov[\\\$1]+=\\\$2; tot[\\\$1]++;} END{for (x=1; x<=2020; x++){print x,cov[x],tot[x];}}' > $bn.depth"
-    fi
-  done | xsbatch -c 1 --mem-per-cpu=20G -R -J LINE --
 
-  for bam in $SINEBAM/*.allReads.NoDupNoSec.bam; do
-    bn=$(basename $bam .bam)
-    if [ ! -e $bn.depth ]; then
-      echo "bedtools coverage -a $MATCH/wolf_SINE_1k.bed -b $bam -d -nobuf | cut -f7,8 | awk 'BEGIN{ for(x=1; x<=2020; x++){cov[x]=0; tot[x]=0;}} {cov[\\\$1]+=\\\$2; tot[\\\$1]++;} END{for (x=1; x<=2020; x++){print x,cov[x],tot[x];}}' > $bn.depth"
-    fi
-  done | xsbatch -c 1 --mem-per-cpu=20G -R -J SINE --
-
-  for bam in $DEERBAM/*.allReads.NoDupNoSec.bam; do
-    bn=$(basename $bam .bam)
-    if [ ! -e $bn.depth ]; then
-      echo "bedtools coverage -a $MATCH/cervusElaphus_BOV2A_1k.bed -b $bam -d -nobuf | cut -f7,8 | awk 'BEGIN{ for(x=1; x<=2024; x++){cov[x]=0; tot[x]=0;}} {cov[\\\$1]+=\\\$2; tot[\\\$1]++;} END{for (x=1; x<=2024; x++){print x,cov[x],tot[x];}}' > $bn.depth"
-    fi
-  done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --max-array-jobs 28 --
-
-  for bam in $RATBAM/*allReads.NoDupNoSec.bam; do
-    bn=$(basename $bam .bam)
-    if [ ! -e $bn.depth ]; then
-      echo "bedtools coverage -a $MATCH/rats_L1_1k.bed -b $bam -d -nobuf | cut -f7,8 | awk 'BEGIN{ for(x=1; x<=2026; x++){cov[x]=0; tot[x]=0;}} {cov[\\\$1]+=\\\$2; tot[\\\$1]++;} END{for (x=1; x<=2026; x++){print x,cov[x],tot[x];}}' > $bn.depth"
-    fi
-  done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
-  touch .bedcov.done
+## Stats computation, like coverage for the different bed intervals.
+cd $STATS
+## Compute the coverage for the full sets and the minimum sets
+if [ ! -e .line.done ]; then
+  echo "bedtools multicov -bams $(ls $LINEBAM/*nodupsec.bam) -bed $LINEMATCH/LINE.allSamples.bed"
 fi
-
+if [ ! -e .sine.done ]; then
+  echo "bedtools multicov -bams $(ls $SINEBAM/*nodupsec.bam) -bed $SINEMATCH/SINE.allSamples.bed"
+fi
+if [ ! -e .bov2a.done ]; then
+  echo "bedtools multicov -bams $(ls $DEERBAM/*nodupsec.bam) -bed $DEERMATCH/BOV2A.allSamples.bed"
+  echo "bedtools multicov -bams $(ls $DEERBAM/*nodupsec.bam | grep -v DD) -bed $DEERMATCH/BOV2A.onlyCE.bed"
+fi
+if [ ! -e .l1.done ]; then
+  echo "bedtools multicov -bams $(ls $RATBAM/*nodupsec.bam) -bed $RATMATCH/L1.allSamples.bed"
+fi
