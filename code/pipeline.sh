@@ -23,7 +23,7 @@ module load paleomix/v1.2.12
 module load preseq/v2.0
 module load bedtools/v2.26.0
 module load kentTools/v22032018
-module load picard/v2.6.0
+module load picard/v2.13.2
 module load agplus/v1.0
 module load cutadapt/v1.11
 
@@ -285,6 +285,7 @@ if [ ! -e .tree.done ]; then
     mv temp2 LINE.allSamples.presence.90pct.txt
     rm temp
   done
+  touch .tree.done
 fi
 
 cd $SINEMATCH
@@ -300,6 +301,7 @@ if [ ! -e .tree.done ]; then
     mv temp2 SINE.allSamples.presence.90pct.txt
     rm temp
   done
+  touch .tree.done
 fi
 
 cd $DEERMATCH
@@ -326,6 +328,7 @@ if [ ! -e .tree.done ]; then
     mv temp2 BOV2A.onlyCE.presence.90pct.txt
     rm temp
   done
+  touch .tree.done
 fi
 
 cd $RATMATCH
@@ -341,6 +344,7 @@ if [ ! -e .tree.done ]; then
     mv temp2 L1.allSamples.presence.90pct.txt
     rm temp
   done
+  touch .tree.done
 fi
 
 ### Preseq commands and plots
@@ -357,32 +361,64 @@ if [ ! -e .allreads.preseq ]; then
   touch .allreads.preseq
 fi
 
-## Preseq for only reads in the 90pct match thing. 
+## Preseq for only reads in the 90pct match thing.
 
-
-exit
-
-## LINE data processing
-cd $STATS
-# Get coverage for all bams at the bed sites
-if [ ! -e wolf_LINE.bedcov ]; then
-  samtools bedcov --reference $WOLFGENOME $MATCH/wolf_LINE.bed $(ls $LINEBAM/L*.allReads.bam) > wolf_LINE.bedcov
+## First make intervals from the 90pct bams
+cd $LINEMATCH
+if [ ! -e LINE.allSamples.90pct.intervals ]; then
+  java -Xmx2g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=LINE.allSamples.90pct.bed O=LINE.allSamples.90pct.intervals SD=${WOLFGENOME/fasta/dict}
+fi
+cd $SINEMATCH
+if [ ! -e SINE.allSamples.90pct.intervals ]; then
+  java -Xmx2g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=SINE.allSamples.90pct.bed O=SINE.allSamples.90pct.intervals SD=${WOLFGENOME/fasta/dict}
+fi
+cd $DEERMATCH
+if [ ! -e BOV2A.allSamples.90pct.intervals ]; then
+  java -Xmx4g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=BOV2A.allSamples.90pct.bed O=BOV2A.allSamples.90pct.intervals SD=${DEERGENOME/fasta/dict}
+fi
+if [ ! -e BOV2A.onlyCE.90pct.intervals ]; then
+  java -Xmx4g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=BOV2A.onlyCE.90pct.bed O=BOV2A.onlyCE.90pct.intervals SD=${DEERGENOME/fasta/dict}
+fi
+cd $RATMATCH
+if [ ! -e L1.allSamples.90pct.intervals ]; then
+  java -Xmx2g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=L1.allSamples.90pct.bed O=L1.allSamples.90pct.intervals SD=${RATGENOME/fasta/dict}
 fi
 
-# Get coverage for all bams at the bed sites
-if [ ! -e wolf_SINE.bedcov ]; then
-  samtools bedcov --reference $WOLFGENOME $MATCH/wolf_SINE.bed $(ls $SINEBAM/S*.allReads.bam) > wolf_SINE.bedcov
-fi
+## Make the bams
+cd $LINEBAM
+if [ ! -e .nodupsec.done ]; then
+  for bam in *markdup.bam; do 
+    echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $LINEMATCH/LINE.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
+  done | xsbatch -R -c 1 --mem-per-cpu=6g --
+  touch .nodupsec.done
+fi 
 
-## DEER data processing
-if [ ! -e deer_BOV2A.bedcov ]; then
-  samtools bedcov --reference $DEERGENOME $MATCH/cervusElaphus_BOV2A.bed $(ls $DEERBAM/*.allReads.bam) > deer_BOV2A.bedcov
-fi
+cd $SINEBAM
+if [ ! -e .nodupsec.done ]; then
+  for bam in *markdup.bam; do 
+    echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $SINEMATCH/SINE.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
+  done | xsbatch -R -c 1 --mem-per-cpu=6g --
+  touch .nodupsec.done
+fi 
 
-## Rat data processing
-if [ ! -e rats_L1.bedcov ]; then
-  samtools bedcov --reference $RATGENOME $MATCH/rats_L1.bed $(ls $RATBAM/*.allReads.bam) > rats_L1.bedcov
-fi
+cd $DEERBAM
+if [ ! -e .nodupsec.done ]; then
+  for bam in *markdup.bam; do 
+    echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $DEERMATCH/BOV2A.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/allSamples.90pct.nodupsec.bam} -"
+  done | xsbatch -R -c 1 --mem-per-cpu=10g --max-array-jobs 12 --
+  for bam in *markdup.bam; do 
+    echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $DEERMATCH/BOV2A.onlyCE.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/onlyCE.90pct.nodupsec.bam} -"
+  done | xsbatch -R -c 1 --mem-per-cpu=10g --max-array-jobs 12 --
+  touch .nodupsec.done
+fi 
+
+cd $RATBAM
+if [ ! -e .nodupsec.done ]; then
+  for bam in Rat*markdup.bam; do 
+    echo "samtools view -F 1292 -O bam $bam | samtools sort -n -O bam - | bedtools pairtobed -abam /dev/stdin -b $RATMATCH/L1.allSamples.90pct.bed | samtools sort -O bam -o ${bam/markdup.bam/90pct.nodupsec.bam} -"
+  done | xsbatch -R -c 1 --mem-per-cpu=6g --
+  touch .nodupsec.done
+fi 
 
 ### Aggregate plot time
 AGGDIR=$PROJECT/aggPlot
@@ -391,33 +427,39 @@ cd $AGGDIR
 
 # Use agplus to make the reads start files
 if [ ! -e .agplus.done ]; then
-  for bam in $LINEBAM/*.allReads.NoDupNoSec.bam; do
+  for bam in $LINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
     if [ ! -e $bn.wig ]; then
-      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $MATCH/wolf_LINE.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $LINEMATCH/LINE.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J LINE --
-  for bam in $SINEBAM/*.allReads.NoDupNoSec.bam; do
+  for bam in $SINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
     if [ ! -e $bn.wig ]; then
-      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $MATCH/wolf_SINE.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $SINEMATCH/SINE.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J SINE --
-  for bam in $DEERBAM/*.allReads.NoDupNoSec.bam; do
+  for bam in $DEERBAM/*.allSamples.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
     if [ ! -e $bn.wig ]; then
-      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $MATCH/cervusElaphus_BOV2A.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.allSamples.90pct.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
-  for bam in $RATBAM/*allReads.NoDupNoSec.bam; do
+  for bam in $DEERBAM/*.onlyCE.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
     if [ ! -e $bn.wig ]; then
-      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/rn6_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $MATCH/rats_L1.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.onlyCE.90pct.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
+  for bam in $RATBAM/Rat*.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam)
+    if [ ! -e $bn.wig ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/rn6_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $RATMATCH/L1.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
   touch .agplus.done
 fi
-
+exit
 ### Use bedtools to compute coverage at each base in a 1 kb interval around the window
 if [ ! -e .bedcov.done ]; then
   for bam in $LINEBAM/*.allReads.NoDupNoSec.bam; do
