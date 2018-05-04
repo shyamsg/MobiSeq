@@ -28,6 +28,9 @@ module load picard/v2.13.2
 module load agplus/v1.0
 module load cutadapt/v1.11
 module load angsd/v0.921
+module load ngsTools
+module load fastme/v2.1.5
+module load RAxML-NG/v0.5.1b
 
 ## For each genome and primer combo, get the appropriate bed and txt files.
 echo "Generating matches."
@@ -586,5 +589,19 @@ if [ ! -e .ngsdist.done ]; then
   let nsites=nsites-1
   while read line; do basename $line .rn6.90pct.nodupsec.bam; done < $RATVAR/L1.bamlist > L1.labels
   echo "ngsDist --geno $RATVAR/L1.allSamples.90pct.beagle.gz --probs --n_ind 4 --n_sites $nsites --pairwise_del --out L1.dist --labels L1.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
-#  touch .ngsdist.done
+  touch .ngsdist.done
+fi
+
+if [ ! -e .tree.done ]; then
+  for i in *dist; do
+    fastme -i $i -s -D 101 -o $(basename $i .dist).nwk
+  done
+  for i in *nwk; do
+    grep -v ^$ $i > temp
+    mv temp $i temp
+    head -1 $i > $(basename $i .nwk).main.nwk
+    tail -n +2 $i > $(basename $i .nwk).boot.nwk
+    raxml-ng --support --tree $(basename $i .nwk).main.nwk --bs-trees $(basename $i .nwk).boot.nwk --prefix $(basename $i .nwk)
+  done
+  touch .tree.done
 fi
