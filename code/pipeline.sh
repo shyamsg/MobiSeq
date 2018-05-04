@@ -595,13 +595,11 @@ fi
 if [ ! -e .tree.done ]; then
   for i in *dist; do
     fastme -i $i -s -D 101 -o $(basename $i .dist).nwk
-  done
-  for i in *nwk; do
-    grep -v ^$ $i > temp
-    mv temp $i temp
-    head -1 $i > $(basename $i .nwk).main.nwk
-    tail -n +2 $i > $(basename $i .nwk).boot.nwk
-    raxml-ng --support --tree $(basename $i .nwk).main.nwk --bs-trees $(basename $i .nwk).boot.nwk --prefix $(basename $i .nwk)
+    grep -v ^$ $(basename $i .dist).nwk > temp
+    mv temp $(basename $i .dist).nwk
+    head -1 $(basename $i .dist).nwk > $(basename $i .dist).main.nwk
+    tail -n +2 $(basename $i .dist).nwk > $(basename $i .dist).boot.nwk
+    raxml-ng --support --tree $(basename $i .dist).main.nwk --bs-trees $(basename $i .dist).boot.nwk --prefix $(basename $i .dist)
   done
   touch .tree.done
 fi
