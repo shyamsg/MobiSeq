@@ -576,11 +576,11 @@ if [ ! -e .ngsdist.done ]; then
   echo "ngsDist --geno $SINEVAR/SINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out SINE.dist --labels SINE.labels --n_boot_rep 100"
   nsites=$(zcat $DEERVAR/BOV2A.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
-  while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.allSamples.bamlist > BOV2A.allSamples.labels
+  while read line; do basename $line CervusElaphus.allSamples.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.allSamples.bamlist > BOV2A.allSamples.labels
   echo "ngsDist --geno $DEERVAR/BOV2A.allSamples.90pct.beagle.gz --probs --n_ind 28 --n_sites $nsites --pairwise_del --out BOV2A.allSamples.dist --labels BOV2A.allSamples.labels --n_boot_rep 100"
   nsites=$(zcat $DEERVAR/BOV2A.onlyCE.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
-  while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.allSamples.bamlist| grep -v DD > BOV2A.onlyCE.labels
+  while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.onlyCE.bamlist > BOV2A.onlyCE.labels
   echo "ngsDist --geno $DEERVAR/BOV2A.onlyCE.90pct.beagle.gz --probs --n_ind 26 --n_sites $nsites --pairwise_del --out BOV2A.onlyCE.dist --labels BOV2A.onlyCE.labels --n_boot_rep 100"
   nsites=$(zcat $RATVAR/L1.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
