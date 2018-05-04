@@ -603,3 +603,11 @@ if [ ! -e .tree.done ]; then
   done
   touch .tree.done
 fi
+
+if [ ! -e .mafinfo.done ]; then
+  for i in $ANGSD/*/*mafs.gz; do
+    zcat $i | cut -f7 | tail -n +2 > $(basename $i .mafs.gz).inds
+    zcat $i | cut -f5 | tail -n +2 > $(basename $i .mafs.gz).mafs 
+  done
+  touch .mafinfo.done
+fi
