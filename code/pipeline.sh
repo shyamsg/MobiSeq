@@ -569,22 +569,22 @@ if [ ! -e .ngsdist.done ]; then
   nsites=$(zcat $LINEVAR/LINE.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
   while read line; do basename $line .Wolf_noHets.90pct.nodupsec.bam; done < $LINEVAR/LINE.bamlist > LINE.labels
-  echo "ngsDist --geno $LINEVAR/LINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out LINE.dist --labels LINE.labels --n_boot_rep 100"
+  echo "ngsDist --geno $LINEVAR/LINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out LINE.dist --labels LINE.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
   nsites=$(zcat $SINEVAR/SINE.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
   while read line; do basename $line .Wolf_noHets.90pct.nodupsec.bam; done < $SINEVAR/SINE.bamlist > SINE.labels
-  echo "ngsDist --geno $SINEVAR/SINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out SINE.dist --labels SINE.labels --n_boot_rep 100"
+  echo "ngsDist --geno $SINEVAR/SINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out SINE.dist --labels SINE.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
   nsites=$(zcat $DEERVAR/BOV2A.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
   while read line; do basename $line .CervusElaphus.allSamples.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.allSamples.bamlist > BOV2A.allSamples.labels
-  echo "ngsDist --geno $DEERVAR/BOV2A.allSamples.90pct.beagle.gz --probs --n_ind 28 --n_sites $nsites --pairwise_del --out BOV2A.allSamples.dist --labels BOV2A.allSamples.labels --n_boot_rep 100"
+  echo "ngsDist --geno $DEERVAR/BOV2A.allSamples.90pct.beagle.gz --probs --n_ind 28 --n_sites $nsites --pairwise_del --out BOV2A.allSamples.dist --labels BOV2A.allSamples.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
   nsites=$(zcat $DEERVAR/BOV2A.onlyCE.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
   while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < $DEERVAR/BOV2A.onlyCE.bamlist > BOV2A.onlyCE.labels
-  echo "ngsDist --geno $DEERVAR/BOV2A.onlyCE.90pct.beagle.gz --probs --n_ind 26 --n_sites $nsites --pairwise_del --out BOV2A.onlyCE.dist --labels BOV2A.onlyCE.labels --n_boot_rep 100"
+  echo "ngsDist --geno $DEERVAR/BOV2A.onlyCE.90pct.beagle.gz --probs --n_ind 26 --n_sites $nsites --pairwise_del --out BOV2A.onlyCE.dist --labels BOV2A.onlyCE.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
   nsites=$(zcat $RATVAR/L1.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
   while read line; do basename $line .rn6.90pct.nodupsec.bam; done < $RATVAR/L1.bamlist > L1.labels
-  echo "ngsDist --geno $RATVAR/L1.allSamples.90pct.beagle.gz --probs --n_ind 4 --n_sites $nsites --pairwise_del --out L1.dist --labels L1.labels --n_boot_rep 100"
+  echo "ngsDist --geno $RATVAR/L1.allSamples.90pct.beagle.gz --probs --n_ind 4 --n_sites $nsites --pairwise_del --out L1.dist --labels L1.labels --n_boot_rep 100" | xsbatch -c 1 --mem-per-cpu=4G --
 #  touch .ngsdist.done
 fi
