@@ -536,7 +536,7 @@ mkdir -p $RATVAR
 cd $LINEVAR
 if [ ! -e .angsd.done ]; then
   ls $LINEBAM/*nodupsec.bam > LINE.bamlist
-  echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3-out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=5G --
+  echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3 -out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=5G --
   touch .angsd.done
 fi
 cd $SINEVAR
@@ -558,4 +558,33 @@ if [ ! -e .angsd.done ]; then
   ls $RATBAM/Rat*nodupsec.bam > L1.bamlist
   echo "angsd -bam L1.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 2 -minIndDepth 3 -out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=3G --
   touch .angsd.done
+fi
+
+## Make ngsdist trees
+NGSANAL=$PROJECT/ngsAnalysis
+mkdir -p $NGSANAL
+cd $NGSANAL
+module load ngsTools
+if [ ! -e .ngsdist.done ]; then
+  nsites=$(zcat $LINEVAR/LINE.allSamples.90pct.mafs.gz | wc -l)
+  let nsites=nsites-1
+  while read line; do basename $line .Wolf_noHets.90pct.nodupsec.bam; done < $LINEVAR/LINE.bamlist > LINE.labels
+  echo "ngsDist --geno $LINEVAR/LINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out --labels LINE.labels"
+  nsites=$(zcat $SINEVAR/LINE.allSamples.90pct.mafs.gz | wc -l)
+  let nsites=nsites-1
+  while read line; do basename $line .Wolf_noHets.90pct.nodupsec.bam; done < $SINEVAR/SINE.bamlist > SINE.labels
+  echo "ngsDist --geno $SINEVAR/SINE.allSamples.90pct.beagle.gz --probs --n_ind 10 --n_sites $nsites --pairwise_del --out --labels SINE.labels"
+  nsites=$(zcat $DEERVAR/BOV2A.allSamples.90pct.mafs.gz | wc -l)
+  let nsites=nsites-1
+  while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < BOV2A.allSamples.bamlist > BOV2A.allSamples.labels
+  echo "ngsDist --geno $DEERVAR/BOV2A.allSamples.90pct.beagle.gz --probs --n_ind 28 --n_sites $nsites --pairwise_del --out --labels BOV2A.allSamples.labels"
+  nsites=$(zcat $DEERVAR/BOV2A.onlyCE.90pct.mafs.gz | wc -l)
+  let nsites=nsites-1
+  while read line; do basename $line .CervusElaphus.onlyCE.90pct.nodupsec.bam; done < BOV2A.onlyCE.bamlist > BOV2A.onlyCE.labels
+  echo "ngsDist --geno $DEERVAR/BOV2A.onlyCE.90pct.beagle.gz --probs --n_ind 26 --n_sites $nsites --pairwise_del --out --labels BOV2A.onlyCE.labels"
+  nsites=$(zcat $RATVAR/L1.allSamples.90pct.mafs.gz | wc -l)
+  let nsites=nsites-1
+  while read line; do basename $line .rn6.90pct.nodupsec.bam; done < L1.bamlist > L1.labels
+  echo "ngsDist --geno $LINEVAR/LINE.allSamples.90pct.beagle.gz --probs --n_ind 4 --n_sites $nsites --pairwise_del --out --labels L1.labels"
+#  touch .ngsdist.done
 fi
