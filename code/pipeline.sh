@@ -464,36 +464,127 @@ cd $AGGDIR
 if [ ! -e .agplus.done ]; then
   for bam in $LINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
-    if [ ! -e $bn.wig ]; then
+    if [ ! -e $bn.agplus.txt ]; then
       echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $LINEMATCH/LINE.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J LINE --
   for bam in $SINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
-    if [ ! -e $bn.wig ]; then
+    if [ ! -e $bn.agplus.txt ]; then
       echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $SINEMATCH/SINE.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J SINE --
   for bam in $DEERBAM/*.allSamples.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
-    if [ ! -e $bn.wig ]; then
+    if [ ! -e $bn.agplus.txt ]; then
       echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.allSamples.90pct.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
   for bam in $DEERBAM/*.onlyCE.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
-    if [ ! -e $bn.wig ]; then
+    if [ ! -e $bn.agplus.txt ]; then
       echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.onlyCE.90pct.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
   for bam in $RATBAM/Rat*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
-    if [ ! -e $bn.wig ]; then
+    if [ ! -e $bn.agplus.txt ]; then
       echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/rn6_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $RATMATCH/L1.allSamples.90pct.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
     fi
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
   touch .agplus.done
 fi
+
+## Split into positive and negative strands
+cd $LINEMATCH
+if [ ! -e LINE.allSamples.90pct.Plus.bed ]; then
+  awk '$6=="+"' < LINE.allSamples.90pct.bed > LINE.allSamples.90pct.Plus.bed
+fi
+if [ ! -e LINE.allSamples.90pct.Minus.bed ]; then
+  awk '$6=="-"' < LINE.allSamples.90pct.bed > LINE.allSamples.90pct.Minus.bed
+fi
+
+cd $SINEMATCH
+if [ ! -e SINE.allSamples.90pct.Plus.bed ]; then
+  awk '$6=="+"' < SINE.allSamples.90pct.bed > SINE.allSamples.90pct.Plus.bed
+fi
+if [ ! -e SINE.allSamples.90pct.Minus.bed ]; then
+  awk '$6=="-"' < SINE.allSamples.90pct.bed > SINE.allSamples.90pct.Minus.bed
+fi
+cd $DEERMATCH
+if [ ! -e BOV2A.allSamples.90pct.Plus.bed ]; then
+  awk '$6=="+"' < BOV2A.allSamples.90pct.bed > BOV2A.allSamples.90pct.Plus.bed
+fi
+if [ ! -e BOV2A.allSamples.90pct.Minus.bed ]; then
+  awk '$6=="-"' < BOV2A.allSamples.90pct.bed > BOV2A.allSamples.90pct.Minus.bed
+fi
+if [ ! -e BOV2A.onlyCE.90pct.Plus.bed ]; then
+  awk '$6=="+"' < BOV2A.onlyCE.90pct.bed > BOV2A.onlyCE.90pct.Plus.bed
+fi
+if [ ! -e BOV2A.onlyCE.90pct.Minus.bed ]; then
+  awk '$6=="-"' < BOV2A.onlyCE.90pct.bed > BOV2A.onlyCE.90pct.Minus.bed
+fi
+cd $RATMATCH
+if [ ! -e L1.allSamples.90pct.Plus.bed ]; then
+  awk '$6=="+"' < L1.allSamples.90pct.bed > L1.allSamples.90pct.Plus.bed
+fi
+if [ ! -e L1.allSamples.90pct.Minus.bed ]; then
+  awk '$6=="-"' < L1.allSamples.90pct.bed > L1.allSamples.90pct.Minus.bed
+fi
+if [ ! -e .strand.agplus.done ]; then
+  for bam in $LINEBAM/*.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam).Plus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $LINEMATCH/LINE.allSamples.90pct.Plus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+    bn=$(basename $bam .bam).Minus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $LINEMATCH/LINE.allSamples.90pct.Minus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J LINE --
+  for bam in $SINEBAM/*.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam).Plus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $SINEMATCH/SINE.allSamples.90pct.Plus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+    bn=$(basename $bam .bam).Minus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/wolf_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $SINEMATCH/SINE.allSamples.90pct.Minus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J SINE --
+  for bam in $DEERBAM/*.allSamples.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam).Plus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.allSamples.90pct.Plus.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+    bn=$(basename $bam .bam).Minus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.allSamples.90pct.Minus.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
+  for bam in $DEERBAM/*.onlyCE.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam).Plus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.onlyCE.90pct.Plus.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+    bn=$(basename $bam .bam).Minus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/deer_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $DEERMATCH/BOV2A.onlyCE.90pct.Minus.bed -dstart -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J BOV2A --
+  for bam in $RATBAM/Rat*.90pct.nodupsec.bam; do
+    bn=$(basename $bam .bam).Plus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/rn6_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $RATMATCH/L1.allSamples.90pct.Plus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+    bn=$(basename $bam .bam).Minus
+    if [ ! -e $bn.agplus.txt ]; then
+      echo "bam2bwshifted -s 1 -o $bn.bw -g $GENOME/rn6_chrlengths.genome $bam && bigWigToWig $bn.bw $bn.wig && agplus -b $RATMATCH/L1.allSamples.90pct.Minus.bed -d start -o $bn.agplus.txt -r -1000,1000 $bn.wig"
+    fi
+  done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
+  touch .strand.agplus.done
+fi
+
 
 ## Stats computation, like coverage for the different bed intervals.
 mkdir -p $STATS
