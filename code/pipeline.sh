@@ -366,8 +366,6 @@ if [ ! -e .allreads.preseq ]; then
   touch .allreads.preseq
 fi
 
-## Preseq for only reads in the 90pct match thing.
-
 ## First make intervals from the 90pct bams
 cd $LINEMATCH
 if [ ! -e LINE.allSamples.90pct.intervals ]; then
@@ -607,7 +605,7 @@ fi
 if [ ! -e .mafinfo.done ]; then
   for i in $ANGSD/*/*mafs.gz; do
     zcat $i | cut -f7 | tail -n +2 > $(basename $i .mafs.gz).inds
-    zcat $i | cut -f5 | tail -n +2 > $(basename $i .mafs.gz).mafs 
+    zcat $i | cut -f5 | tail -n +2 > $(basename $i .mafs.gz).mafs
   done
   touch .mafinfo.done
 fi
