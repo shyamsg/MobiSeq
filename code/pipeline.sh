@@ -503,7 +503,6 @@ fi
 if [ ! -e LINE.allSamples.90pct.Minus.bed ]; then
   awk '$6=="-"' < LINE.allSamples.90pct.bed > LINE.allSamples.90pct.Minus.bed
 fi
-
 cd $SINEMATCH
 if [ ! -e SINE.allSamples.90pct.Plus.bed ]; then
   awk '$6=="+"' < SINE.allSamples.90pct.bed > SINE.allSamples.90pct.Plus.bed
@@ -531,6 +530,8 @@ fi
 if [ ! -e L1.allSamples.90pct.Minus.bed ]; then
   awk '$6=="-"' < L1.allSamples.90pct.bed > L1.allSamples.90pct.Minus.bed
 fi
+
+cd $AGGDIR
 if [ ! -e .strand.agplus.done ]; then
   for bam in $LINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam).Plus
@@ -584,7 +585,6 @@ if [ ! -e .strand.agplus.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
   touch .strand.agplus.done
 fi
-
 
 ## Stats computation, like coverage for the different bed intervals.
 mkdir -p $STATS
@@ -700,3 +700,40 @@ if [ ! -e .mafinfo.done ]; then
   done
   touch .mafinfo.done
 fi
+
+## GC content in 20 bp windows around cut site, and then measureing coverage at
+## at those windows
+GCANAL=$PROJECT/gcAnalysis
+mkdir -p $GCANAL
+
+## LINE processing
+bedtools slop -i $LINEMATCH/LINE.allSamples.90pct.bed -g $GENOME/wolf_chrlengths.genome -b 500 |
+  sort -k1,1 -k2,2n |
+  bedtools nuc -fi $WOLFGENOME -bed - | cut -f1-4,8 |
+  bedtools coverage -a - -b $LINEBAM/*90pct.nodupsec.bam -mean > LINE.gc_coverage.bed
+
+bedtools slop -i $SINEMATCH/SINE.allSamples.90pct.bed -g $GENOME/wolf_chrlengths.genome -b 500 |
+  sort -k1,1 -k2,2n |
+  bedtools nuc -fi $WOLFGENOME -bed - | cut -f1-4,8 |
+  bedtools coverage -a - -b $SINEBAM/*90pct.nodupsec.bam -mean > SINE.gc_coverage.bed
+
+bedtools slop -i $DEERMATCH/BOV2A.onlyCE.90pct.bed -g $GENOME/deer_chrlengths.genome -b 1000 |
+  sort -k1,1 -k2,2n |
+  bedtools nuc -fi $DEERGENOME -bed - | cut -f1-4,8 |
+  bedtools coverage -a - -b $(ls $DEERBAM/*90pct.nodupsec.bam | grep -v DD) -mean > BOV2A_onlyCE.gc_coverage.bed
+
+bedtools slop -i $RATMATCH/L1.allSamples.90pct.bed -g $GENOME/rn6_chrlengths.genome -b 1000 |
+  sort -k1,1 -k2,2n |
+  bedtools nuc -fi $RATGENOME -bed - | cut -f1-4,8 |
+  bedtools coverage -a - -b $RATBAM/*90pct.nodupsec.bam -mean > L1.gc_coverage.bed
+
+## distance from primer site
+cd $ANGSD
+zcat LINE/LINE.allSamples.90pct.mafs.gz | awk 'BEGIN{OFS="\t";} NR>1{print $1,$2-1,$2;}' | sort -k1,1 -k2,2n |
+  bedtools closest -a - -b $LINEMATCH/LINE.allSamples.90pct.bed -d | cut -f1,3,10 > LINE/LINE.allSamples.90pct.snps.txt
+zcat SINE/SINE.allSamples.90pct.mafs.gz | awk 'BEGIN{OFS="\t";} NR>1{print $1,$2-1,$2;}' | sort -k1,1 -k2,2n |
+  bedtools closest -a - -b $SINEMATCH/SINE.allSamples.90pct.bed -d | cut -f1,3,10 > SINE/SINE.allSamples.90pct.snps.txt
+zcat deer/BOV2A.onlyCE.90pct.mafs.gz    | awk 'BEGIN{OFS="\t";} NR>1{print $1,$2-1,$2;}' | sort -k1,1 -k2,2n |
+  bedtools closest -a - -b $DEERMATCH/BOV2A.onlyCE.90pct.bed -d | cut -f1,3,10 > deer/BOV2A.onlyCE.90pct.snps.txt
+zcat rats/L1.allSamples.90pct.mafs.gz   | awk 'BEGIN{OFS="\t";} NR>1{print $1,$2-1,$2;}' | sort -k1,1 -k2,2n |
+  bedtools closest -a - -b $RATMATCH/L1.allSamples.90pct.bed -d | cut -f1,3,10 > rats/L1.allSamples.90pct.snps.txt
