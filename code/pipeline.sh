@@ -1,5 +1,9 @@
 #! /bin/bash
 
+## Define the variables required for the pipeline. Most of these are directory
+## names and some of them are locations of reference genomes.
+## This is an important step, so pay close attention to what you have defined
+## here.
 PROJECT=/groups/hologenomics/shyam/data/projects/MobiSeq
 FASTQ=$PROJECT/fastqs
 STATS=$PROJECT/stats
@@ -12,6 +16,7 @@ WOLFGENOME=$PROJECT/genomes/L.Dalen_14_wolf.scf.noHets.fasta
 DEERGENOME=$PROJECT/genomes/Cervus_elaphus.platanus.fasta
 RATGENOME=$PROJECT/genomes/rn6.fasta
 
+## Load the modules required to run this pipeline on the high performance cluster
 module load python/v2.7.12
 module load perl/v5.24.0
 module load R/v3.4.1
@@ -33,14 +38,21 @@ module load fastme/v2.1.5
 module load RAxML-NG/v0.5.1b
 
 ## For each genome and primer combo, get the appropriate bed and txt files.
+## Work in the matches directory, to create a catalog of matches in the genome.
+## The matches in the genome itself is not used downstream, since there are plots
+## of other places in the genome where these primers are present, but these loci
+## are not present in the reference genome. We use another technique to get all
+## the possible matches later.
 echo "Generating matches."
 mkdir -p $MATCH
 cd $MATCH
+## For each primer, make afile with the primer sequrence.
 if [ ! -e BOV2A.txt ]; then echo "BOV2A   GGGACGGGGGAGCCTGGTGGGCTG" > BOV2A.txt; fi
 if [ ! -e L1.txt ]; then echo "L1  CCGGAAACCGGGAAAGGGAATAACAC" > L1.txt; fi
 if [ ! -e LINE.txt ]; then echo "LINE    GATAGCCAAACTGTGGAAGG" > LINE.txt; fi
 if [ ! -e SINE.txt ]; then echo "SINE    GAGACCCGGGATCGAATCCC" > SINE.txt; fi
 
+## For each primer, find the matches in the appropriate reference genome.
 if [ ! -e wolf_LINE.bed ]; then
   python $PROJECT/code/estNumberPrimers.py -f $WOLFGENOME -s LINE.txt -o wolf_LINE.txt -b wolf_LINE.bed
 fi
@@ -55,16 +67,44 @@ if [ ! -e cervusElaphus_BOV2A.bed ]; then
 fi
 echo "Done generating matches."
 
-## for each primer, filter do adapter removal on the data
-echo "removing adapters"
+## For each dataset, first remove the adapters using cutadapt.
+## We are going to filter it so that we remove the sequencing adapters that may
+## be present in the reads. In this step, we are also going to check that the
+## 5' end of read2 contains the primer sequence - allowing for 5% mismatch rate.
+## We are not going to remove the primer sequence from the read, just verify that
+## it is there. The primer sequence removal itself is done using AdapterRemoval
+echo "Removing adapters"
 mkdir -p $ADAPTER && cd $ADAPTER
 
+## Details of cutadapt for LINE. The same logic follows for the other datasets.
 LINEADAP=$ADAPTER/wolf/LINE
 mkdir -p $LINEADAP && cd $LINEADAP
+## Check if the adapter removal is done, if yes then this file must exist.
+## If it does, skip this step, if not then perform cutadapt steps.
 if [ ! -e .adap.done ]; then
+  ## For each fastq pair, do cutadapt
   for f in $FASTQ/wolf_line/L*_R1.fastq.gz
   do
+    ## Figure out the name of the sample.
     bn=$(basename $f _raw_R1.fastq.gz)
+    ## cutadapt is run with these settings
+    ## -a means check for sequence on the 3' end of read1, here it is N, so any base
+    ## will do. Need this to make sure that we keep the reads properly.
+    ## -G means check for sequence on the 5' end of read2, here it is the primer
+    ## sequence for LINE, and the ^ means that this sequence should be in the start
+    ## of the read2.
+    ## --discard-untrimmed means that seqeunces that do not match these primers will be excluded,
+    ## so read pairs where read2 does not have the TE primer will be thrown out.
+    ## --no-trim means dont remove the primer sequences.
+    ## --no-indels means dont account for short insertions and deletoins.
+    ## -e is the mismatch rate, here it is 5% which corresponds to 1 mismatch in the primer sequence.
+    ## -o is the output name for read 1
+    ## -p is the output name for read 2
+    ## $f and ${f/R1/R2} are the read 1 and read 2 input files respectively.
+    ## Adapter removal is run upon the successful completion of cutadapt, and here it
+    ## takes the cutadapt output files as input.
+    ## The sequencing primers are not specified, since AdapterRemoval has the Illumina
+    ## sequencing primers are the default. Other options are fairly self explanatory.
     echo "cutadapt -a N$ -G ^GATAGCCAAACTGTGGAAGG --discard-untrimmed --no-trim --no-indels -e 0.05 -o ${bn}_primer_R1.fastq.gz -p ${bn}_primer_R2.fastq.gz $f ${f/R1/R2} &&\
     AdapterRemoval --qualitybase 33 --qualitybase-output 33 --qualitymax 45 \
     --gzip --mm 3 --minlength 25 --trimns --trimqualities --minquality 10 \
@@ -115,28 +155,33 @@ if [ ! -e .adap.done ]; then
   touch .adap.done
 fi
 
+## This next line is important since we want to wait for the jobs above to finish
+## before proceeding. This gives us an opportunity to stop the script, so that
+## the downstream jobs are not launched.
+## To do the downstream jobs, you should run the script again, after the
+## adapter removal/cutadapt scripts are finished on the HPC. Check they
+## ran properly and finished with the correct output before carrying on.
 echo "Adapter removal jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
 read dummy
 
-## map the reads using bwa mem
+## Map the trimmed, adapter removed reads to the appropriate reference genomes
+## using BWA mem. Use mem so that we can soft clip the primer sequences in the beginning of the read.
 LINEBAM=$MAP/wolf/LINE
 mkdir -p $LINEBAM
 cd $LINEBAM
 if [ ! -e .map.done ]; then
+  ## For each of the truncated read pairs. (output of Adapter removal) --
+  ## Discard any reads that are orphans of a pair, so keep only valid pairs
+  ## Map the pair using BWA mem to the appropriate genome. Comments are in the LINE
+  ## section, same applies to other primers as well.
   for fastq in $LINEADAP/*pair1.truncated.gz
   do
+    ## Get the sample name
     bn=$(basename $fastq _primer_noAdap.pair1.truncated.gz)
+    ## Run bwa mem and then sort then sort the bam by coordinates.
     echo "(bwa mem -M /groups/hologenomics/data/genomes/wolf/L.Dalen_14_wolf.scf.noHets.fasta $fastq ${fastq/pair1/pair2} | samtools sort -O bam -o ${bn}.Wolf_noHets.bam - )"
   done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=10 --
   touch .map.done
-fi
-if [ ! -e .dup.done ]; then
-  for bam in $LINEBAM/*.Wolf_noHets.bam
-  do
-    bn=$(basename $bam .Wolf_noHets.bam)
-    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.Wolf_noHets.markdup.bam"
-  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=10 --
-  touch .dup.done
 fi
 SINEBAM=$MAP/wolf/SINE
 mkdir -p $SINEBAM
@@ -149,14 +194,6 @@ if [ ! -e .map.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=10G -J sine -R --max-array-jobs=10 --
   touch .map.done
 fi
-if [ ! -e .dup.done ]; then
-  for bam in $SINEBAM/*.Wolf_noHets.bam
-  do
-    bn=$(basename $bam .Wolf_noHets.bam)
-    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.Wolf_noHets.markdup.bam"
-  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=10 --
-  touch .dup.done
-fi
 DEERBAM=$MAP/deer
 mkdir -p $DEERBAM
 cd $DEERBAM
@@ -167,14 +204,6 @@ if [ ! -e .map.done ]; then
     echo "(bwa mem -M /groups/hologenomics/ariglesi/data/0_raw_deer_ltr/Cervus_elaphus.platanus.fasta $fastq ${fastq/pair1/pair2} | samtools sort -O bam -o ${bn}.CervusElaphus.bam - )"
   done | xsbatch -c 1 --mem-per-cpu=10G -J deer -R --max-array-jobs=20 --
   touch .map.done
-fi
-if [ ! -e .dup.done ]; then
-  for bam in $DEERBAM/*.CervusElaphus.bam
-  do
-    bn=$(basename $bam .CervusElaphus.bam)
-    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.CervusElaphus.markdup.bam"
-  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=20 --
-  touch .dup.done
 fi
 RATBAM=$MAP/rats
 mkdir -p $RATBAM
@@ -187,6 +216,44 @@ if [ ! -e .map.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=10G -J rats -R --max-array-jobs=20 --
   touch .map.done
 fi
+
+## Wait for the mappings to finish before going on. Read the comment on the previous
+## stopping point for details.
+echo "Mapping jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+read dummy
+
+## Do the duplicate marking using samtools markdup
+cd $LINEBAM
+if [ ! -e .dup.done ]; then
+  for bam in $LINEBAM/*.Wolf_noHets.bam
+  do
+    bn=$(basename $bam .Wolf_noHets.bam)
+    ## sort first by name, so that read1 and read2 are together.
+    ## then fixmate, so that the correct md and cigar are present,
+    ## then sort it by coordinates, then mark duplicates
+    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.Wolf_noHets.markdup.bam"
+  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=10 --
+  touch .dup.done
+fi
+cd $SINEBAM
+if [ ! -e .dup.done ]; then
+  for bam in $SINEBAM/*.Wolf_noHets.bam
+  do
+    bn=$(basename $bam .Wolf_noHets.bam)
+    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.Wolf_noHets.markdup.bam"
+  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=10 --
+  touch .dup.done
+fi
+cd $DEERBAM
+if [ ! -e .dup.done ]; then
+  for bam in $DEERBAM/*.CervusElaphus.bam
+  do
+    bn=$(basename $bam .CervusElaphus.bam)
+    echo "samtools sort -n $bam | samtools fixmate -r -p -m - - | samtools sort - | samtools markdup -r - $bn.CervusElaphus.markdup.bam"
+  done | xsbatch -c 1 --mem-per-cpu=10G -J line -R --max-array-jobs=20 --
+  touch .dup.done
+fi
+cd $RATBAM
 if [ ! -e .dup.done ]; then
   for bam in $RATBAM/*.rn6.bam
   do
@@ -196,10 +263,12 @@ if [ ! -e .dup.done ]; then
   touch .dup.done
 fi
 
-## Now run paleomix for each one
-echo "Mapping jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+## Wait for previous commands to be finished properly.
+echo "Mark duplicate jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
 read dummy
-## Merge the rat bams before and after merging things to one file
+
+## Merge the rat bams - from different tissues - into one,
+## Do this for both the before and after duplicate marked sets of bams
 cd $RATBAM
 if [ ! -e .merge.done ]; then
   for i in {1..4}
@@ -210,19 +279,35 @@ if [ ! -e .merge.done ]; then
   touch .merge.done
 fi
 
+## Wait for previous commands to be done before moving on.
+echo "Rat tissue merge jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+read dummy
+
 ## This par is only to be done when the bams are ready.
 ## WAIT FOR BAMS TO BE DONE!!
-## For each bam from the markdup file, get the bed of read 2 places.
+## For each bam from the markdup file, get the bed with the starting positions of
+## read2.
 LINEMATCH=$MATCH/wolf/LINE
 mkdir -p $LINEMATCH
 cd $LINEMATCH
 if [ ! -e .match.done ]; then
   for bam in $LINEBAM/*markdup.bam
   do
+    ## First remove all the crappy reads - duplicates and secondary alignments (-F 1292)
+    ## and restrict to read2 (-f 128), then convert that to a bed file.
+    ## and then use the strand information to get the start of read2 in the right orientation
+    ## and make a bed with a 20 bp window (will be different depending on the primer
+    ## length)
     samtools view -O bam -F 1292 -f 128 $bam | bedtools bamtobed -cigar -i /dev/stdin | \
     awk 'BEGIN{OFS="\t";} $6=="+"{ print $1,$2,($2+20),$4,$5,$6;} $6=="-"{print $1,($3-20),$3,$4,$5,$6;}' | \
     bedtools sort | bedtools merge -s -c 5 -o count | awk  'BEGIN{OFS="\t";}{print $1,$2,$3,$1"_"$2,$5,$4; }' > $(basename $bam .markdup.bam).bed
   done
+  ## Take all the beds, one for each sample, merge them, so that there is at least a 20 bp overlap,
+  ## so basically the whole primer overlaps, and make this the bed of primer locations.
+  ## After this, using the count of how many samples had this site, make a bed
+  ## of locations where at least 9 of the 10 samples contained the site.
+  ## the number 8 and 11 are applicable to LINE (90% of 10 samples), but they will differ for the
+  ## other primers depending on the number of samples.
   cat *.Wolf_noHets.bed | bedtools sort | bedtools merge -c 5 -o count -s -d -20 | awk 'BEGIN{OFS="\t";}{print $1,$2,$3,$1"_"$2,$5,$4; }' > LINE.allSamples.bed
   awk '$5>8 && $5<11{print $0;}' < LINE.allSamples.bed > LINE.allSamples.90pct.bed
   touch .match.done
@@ -254,6 +339,7 @@ if [ ! -e .match.done ]; then
     bedtools sort | bedtools merge -s -c 5 -o count | awk  'BEGIN{OFS="\t";}{print $1,$2,$3,$1"_"$2,$5,$4; }' > $(basename $bam .markdup.bam).bed
   done
   cat *.CervusElaphus.bed | bedtools sort | bedtools merge -c 5 -o count -s -d -24 | awk 'BEGIN{OFS="\t";}{print $1,$2,$3,$1"_"$2,$5,$4; }' > BOV2A.allSamples.bed
+  ## For the deer, make a bed with the dama dama samples removed.
   cat $(ls *.CervusElaphus.bed | grep -v DD) | bedtools sort | bedtools merge -c 5 -o count -s -d -24 | awk 'BEGIN{OFS="\t";}{print $1,$2,$3,$1"_"$2,$5,$4; }' > BOV2A.onlyCE.bed
   awk '$5>25 && $5<29{print $0;}' < BOV2A.allSamples.bed > BOV2A.allSamples.90pct.bed
   awk '$5>23 && $5<27{print $0;}' < BOV2A.onlyCE.bed > BOV2A.onlyCE.90pct.bed
@@ -277,11 +363,17 @@ fi
 echo "Done generating global matches."
 
 ## For each element make a tree with the presence ablsence data, on the full set, and then on the 90pct set.
+## This analysis is not included in the manuscript figures.
+## using the presence and absence data for each primer, in all the samples,
+## make a neighbor joining tree with this information.
 cd $LINEMATCH
 if [ ! -e .tree.done ]; then
+  ## Get the names of the windows in both all loci, and 90% loci.
   cut -f4 LINE.allSamples.bed > LINE.allSamples.presence.txt
   cut -f4 LINE.allSamples.90pct.bed > LINE.allSamples.presence.90pct.txt
   for bed in *.Wolf_noHets.bed; do
+    ## For each sample, get the intersection of the sample loci with the
+    ## merged for all samples loci.
     bedtools intersect -a LINE.allSamples.bed -b $bed -wa -c -s | cut -f7 > temp
     paste LINE.allSamples.presence.txt temp > temp2
     mv temp2 LINE.allSamples.presence.txt
@@ -291,6 +383,8 @@ if [ ! -e .tree.done ]; then
     rm temp
   done
   touch .tree.done
+  ## The matrix with infomration on presence and absence is created here.
+  ## Use R and hierarchical clustering to make the NJ tree.
 fi
 
 cd $SINEMATCH
@@ -352,13 +446,16 @@ if [ ! -e .tree.done ]; then
   touch .tree.done
 fi
 
-### Preseq commands and plots
+## Compute library complexity using preseq.
 PRESEQ=$PROJECT/preseq
 mkdir -p $PRESEQ
 cd $PRESEQ
 if [ ! -e .allreads.preseq ]; then
   for bam in $LINEBAM/*Wolf_noHets.bam $SINEBAM/*Wolf_noHets.bam $DEERBAM/*CervusElaphus.bam $RATBAM/R*rn6.bam; do
     bn=$(basename $bam | cut -f1-2 -d ".")
+    ## For each bam compute the library complexity using preseq.
+    ## -B means bam, -P means paired end, -e is extrapolation range,
+    ## and -s is the step size.
     if [ ! -e $bn2.lc ]; then
       echo "preseq lc_extrap -B -P -o $bn.allReads.lc -e 2e9 -s 5e4 $bam"
     fi
@@ -366,7 +463,11 @@ if [ ! -e .allreads.preseq ]; then
   touch .allreads.preseq
 fi
 
-## First make intervals from the 90pct bams
+## Using the 90% loci, subset each bam so that only the read pairs where read2
+## overlaps one of the 90% loci intervals is retained.
+
+## The first step is to create an interval file from the bed file, so that we can use GATK
+## This step is not used downstream, so ignore it if you are not going to use GATK.
 cd $LINEMATCH
 if [ ! -e LINE.allSamples.90pct.intervals ]; then
   java -Xmx2g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=LINE.allSamples.90pct.bed O=LINE.allSamples.90pct.intervals SD=${WOLFGENOME/fasta/dict}
@@ -387,7 +488,9 @@ if [ ! -e L1.allSamples.90pct.intervals ]; then
   java -Xmx2g -jar /groups/hologenomics/software/picard/v2.13.2/picard.jar BedToIntervalList I=L1.allSamples.90pct.bed O=L1.allSamples.90pct.intervals SD=${RATGENOME/fasta/dict}
 fi
 
-## Make the bams
+## Use samtools and bedtools to subset the bams to retaine only read pairs that
+## have one of the reads overlap one of the intervals in the 90% loci list.
+## In the process, also remove the duplicate and secondary alignments
 cd $LINEBAM
 if [ ! -e .nodupsec.done ]; then
   for bam in *markdup.bam; do
@@ -423,7 +526,11 @@ if [ ! -e .nodupsec.done ]; then
   touch .nodupsec.done
 fi
 
-## make the indexes
+## Wait for these jobs to be finised before continuing.
+echo "Bam subsetting jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+read dummy
+
+## Generate the bam indices for the recently created bams
 cd $LINEBAM
 if [ ! -e .bai.done ]; then
   for bam in *bam; do
@@ -452,15 +559,20 @@ if [ ! -e .bai.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=2G -R --
   touch .bai.done
 fi
-echo "Generated indices for bams. Press any key to continue, and Ctrl+C to quit."
+## Again wait for these to get done before moving on.
+echo "Generating indices for bams. Press any key to continue, and Ctrl+C to quit."
 read dummy
 
+## Make the aggregate plots for coverage around the primer locations, using aggplot.
 ### Aggregate plot time
 AGGDIR=$PROJECT/aggPlot
 mkdir -p $AGGDIR
 cd $AGGDIR
 
-# Use agplus to make the reads start files
+## Use agplus on the 90pct.nodupsec.bam files to make the reads agplus files,
+## which contain the reads starts for the reads that fall along the intervals
+## in the 90% loci file. within a +/- 1 kb window.
+## do this for each primer.
 if [ ! -e .agplus.done ]; then
   for bam in $LINEBAM/*.90pct.nodupsec.bam; do
     bn=$(basename $bam .bam)
@@ -495,6 +607,7 @@ if [ ! -e .agplus.done ]; then
   touch .agplus.done
 fi
 
+## Do the agplus computations, but after splitting into + and - strands.
 ## Split into positive and negative strands
 cd $LINEMATCH
 if [ ! -e LINE.allSamples.90pct.Plus.bed ]; then
@@ -531,6 +644,7 @@ if [ ! -e L1.allSamples.90pct.Minus.bed ]; then
   awk '$6=="-"' < L1.allSamples.90pct.bed > L1.allSamples.90pct.Minus.bed
 fi
 
+## Repeat the aggplot process for the +/- strand bed files.
 cd $AGGDIR
 if [ ! -e .strand.agplus.done ]; then
   for bam in $LINEBAM/*.90pct.nodupsec.bam; do
@@ -585,8 +699,12 @@ if [ ! -e .strand.agplus.done ]; then
   done | xsbatch -c 1 --mem-per-cpu=20G -R -J L1 --
   touch .strand.agplus.done
 fi
+## Wait for these jobs to be done before continuing.
+echo "Agplus and agplus +/- jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+read dummy
 
-## Stats computation, like coverage for the different bed intervals.
+## This section is for computing the statistics for the intervals, like coverage,
+## number of samples etc.
 mkdir -p $STATS
 cd $STATS
 ## Compute the coverage for the full sets
@@ -613,6 +731,7 @@ if [ ! -e .l1.done ]; then
   touch .l1.done
 fi
 
+## Now call variants in the 90% sets using angsd.
 ## Variant calling
 mkdir -p $ANGSD
 cd $ANGSD
@@ -627,7 +746,13 @@ mkdir -p $RATVAR
 
 cd $LINEVAR
 if [ ! -e .angsd.done ]; then
+  ## Make a file with the list of bams that should be used for the variant calling
   ls $LINEBAM/*nodupsec.bam > LINE.bamlist
+  ## Use angsd, with min qual 30, min map qual 30,
+  ## use GL 1 model (samtools genotype likelihood model), compute mafs, filter
+  ## for snps with a p-value of 1e-6, get major minor alleles, output a beagle file
+  ## and remove individuals with depth less than 3, and remove sites with less than
+  ## 50% inds that are retained (in this case 50% of 10 = 5 samples)
   echo "angsd -bam LINE.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 5 -minIndDepth 3 -out LINE.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=5G --
   touch .angsd.done
 fi
@@ -651,12 +776,18 @@ if [ ! -e .angsd.done ]; then
   echo "angsd -bam L1.bamlist -minq 30 -minmapq 30 -GL 1 -doMaf 2 -SNP_pval 1e-6 -doMajorMinor 1 -doglf 2 -minind 2 -minIndDepth 3 -out L1.allSamples.90pct" | xsbatch -c 1 --mem-per-cpu=3G --
   touch .angsd.done
 fi
+## Angsd variant calling in progress. Wait before doing the next steps.
+echo "Angsd variant calling jobs launched, wait for them to finish before proceeding. Press Ctrl+C to 1 times to exit. Any other key will continue"
+read dummy
 
+## Use the variant calls, beagle files to do ngs analysis.
 ## Make ngsdist trees
 NGSANAL=$PROJECT/ngsAnalysis
 mkdir -p $NGSANAL
 cd $NGSANAL
 module load ngsTools
+## Compute the pairwise distances between the samples using the beagle file,
+## using ngsDist.
 if [ ! -e .ngsdist.done ]; then
   nsites=$(zcat $LINEVAR/LINE.allSamples.90pct.mafs.gz | wc -l)
   let nsites=nsites-1
@@ -681,6 +812,8 @@ if [ ! -e .ngsdist.done ]; then
   touch .ngsdist.done
 fi
 
+## using the ngsdistances computed, make neighbor joining tree using fastme and
+## raxml-ng to place support on the nodes.
 if [ ! -e .tree.done ]; then
   for i in *dist; do
     fastme -i $i -s -D 101 -o $(basename $i .dist).nwk
@@ -693,6 +826,8 @@ if [ ! -e .tree.done ]; then
   touch .tree.done
 fi
 
+## Use the maf file from angsd to compute mafs and the number of individuals that
+## have data at each site
 if [ ! -e .mafinfo.done ]; then
   for i in $ANGSD/*/*mafs.gz; do
     zcat $i | cut -f7 | tail -n +2 > $(basename $i .mafs.gz).inds
@@ -701,12 +836,15 @@ if [ ! -e .mafinfo.done ]; then
   touch .mafinfo.done
 fi
 
-## GC content in 20 bp windows around cut site, and then measureing coverage at
+## Compute GC content in a 1kb window around the 90% loci, and then measure coverage
 ## at those windows
 GCANAL=$PROJECT/gcAnalysis
 mkdir -p $GCANAL
 
 ## LINE processing
+## First, extend the interval by 500 bp on both sides, then sort the bed file,
+## then use nuc to compute the GC content, then compute coverage at these
+## windows.
 bedtools slop -i $LINEMATCH/LINE.allSamples.90pct.bed -g $GENOME/wolf_chrlengths.genome -b 500 |
   sort -k1,1 -k2,2n |
   bedtools nuc -fi $WOLFGENOME -bed - | cut -f1-4,8 |
@@ -727,7 +865,8 @@ bedtools slop -i $RATMATCH/L1.allSamples.90pct.bed -g $GENOME/rn6_chrlengths.gen
   bedtools nuc -fi $RATGENOME -bed - | cut -f1-4,8 |
   bedtools coverage -a - -b $RATBAM/*90pct.nodupsec.bam -mean > L1.gc_coverage.bed
 
-## distance from primer site
+## Finally, compute the distance of these snps, from angsd to the closest primer
+## site in the 90% loci list.
 cd $ANGSD
 zcat LINE/LINE.allSamples.90pct.mafs.gz | awk 'BEGIN{OFS="\t";} NR>1{print $1,$2-1,$2;}' | sort -k1,1 -k2,2n |
   bedtools closest -a - -b $LINEMATCH/LINE.allSamples.90pct.bed -d | cut -f1,3,10 > LINE/LINE.allSamples.90pct.snps.txt
